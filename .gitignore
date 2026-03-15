@@ -4,6 +4,9 @@
 # Raw data
 data/raw/
 
+# Processed data (too large for GitHub)
+data/tiles/
+
 # Python
 __pycache__/
 *.pyc
