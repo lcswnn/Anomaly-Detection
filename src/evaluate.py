@@ -2,23 +2,31 @@
 evaluate.py — Evaluate the Trained Autoencoder & Detect Anomalies
 ==================================================================
 Loads the best model, computes reconstruction errors across all tiles,
-sets an anomaly threshold, and visualizes the results.
+sets an anomaly threshold, visualizes the results, and runs pre-ship
+quality checks (sub-classification, threshold robustness, false negatives).
 
 Usage:
     python evaluate.py
+    python evaluate.py --skip-quality-checks   # skip the quality checks
 
 Outputs:
     ../models/threshold.npy               — saved anomaly threshold value
     ../models/error_distribution.png      — histogram of reconstruction errors
     ../models/anomalies.png               — top anomalous tiles visualization
     ../models/reconstructions.png         — random input vs reconstruction comparison
+    ../models/subclass_mosaic.png         — anomalies colored by sub-class
+    ../models/threshold_robustness.png    — bootstrap threshold stability
+    ../models/false_negatives.png         — candidate false negatives
+    ../models/quality_report.txt          — text summary of all checks
 """
 
 import os
+import sys
 import numpy as np
 import torch
 import h5py
 from model import Autoencoder
+from quality_checks import run_all_checks
 
 # ── Configuration ──────────────────────────────────────────────
 H5_PATH = "../data/tiles/tiles.h5"
@@ -246,12 +254,20 @@ def main():
     )
 
     print(f"\n{'='*55}")
-    print(f"Evaluation complete!")
+    print("Evaluation complete!")
     print(f"  Check {OUTPUT_DIR}/ for visualizations.")
-    print(f"\nTo classify a new tile as anomalous:")
+    print("\nTo classify a new tile as anomalous:")
     print(f"  threshold = np.load('{OUTPUT_DIR}/threshold.npy')")
-    print(f"  if reconstruction_error > threshold:")
-    print(f"      print('ANOMALY')")
+    print("  if reconstruction_error > threshold:")
+    print("      print('ANOMALY')")
+
+    # ── Pre-Ship Quality Checks ───────────────────────────────
+    if "--skip-quality-checks" not in sys.argv:
+        print(f"\n{'='*55}")
+        print("Running pre-ship quality checks...")
+        run_all_checks(model=model, errors=errors, threshold=threshold, device=device)
+    else:
+        print("\n  Skipping quality checks (--skip-quality-checks)")
 
 
 if __name__ == "__main__":

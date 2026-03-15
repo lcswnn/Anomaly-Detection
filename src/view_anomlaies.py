@@ -2,7 +2,8 @@
 view_anomalies.py — View the Top Anomalies Ranked by MSE
 ==========================================================
 Loads the trained model, computes reconstruction errors,
-and saves the top N most anomalous tiles as a ranked grid.
+and saves the top N most anomalous tiles as a ranked grid
+with sub-classification labels.
 
 Usage:
     python view_anomalies.py
@@ -18,7 +19,9 @@ import h5py
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 from model import Autoencoder
+from quality_checks import classify_tile
 
 # ── Configuration ──────────────────────────────────────────────
 H5_PATH = "../data/tiles/tiles.h5"
@@ -80,35 +83,62 @@ def main():
 
     rows = int(np.ceil(n / COLS))
 
-    # Build the mosaic
+    CLASS_COLORS = {
+        "saturated_star":  "#ff4444",
+        "satellite_trail": "#44aaff",
+        "extended_source": "#44ff44",
+        "unknown":         "#ffaa00",
+    }
+
+    # Build the mosaic with sub-classification labels
     print(f"Building {rows}x{COLS} mosaic of top {n} anomalies (ranked by MSE)...")
-    fig, axes = plt.subplots(rows, COLS, figsize=(COLS * 2.2, rows * 2.4))
+    fig, axes = plt.subplots(rows, COLS, figsize=(COLS * 2.4, rows * 2.8))
 
     with h5py.File(H5_PATH, "r") as f:
         tiles = f["tiles"]
 
-        for i in range(rows * COLS):
-            row = i // COLS
-            col = i % COLS
-            ax = axes[row, col] if rows > 1 else axes[col]
+        with torch.no_grad():
+            for i in range(rows * COLS):
+                r = i // COLS
+                c = i % COLS
+                ax = axes[r, c] if rows > 1 else axes[c]
 
-            if i < n:
-                idx = top_indices[i]
-                tile = tiles[idx]
-                ax.imshow(tile, cmap="gray", origin="lower", vmin=0, vmax=1)
-                ax.set_title(f"#{i+1}  MSE: {errors[idx]:.5f}", fontsize=7, pad=2)
-            else:
-                ax.axis("off")
-                continue
+                if i < n:
+                    idx = top_indices[i]
+                    tile = tiles[idx]
 
-            ax.set_xticks([])
-            ax.set_yticks([])
+                    # Classify the tile
+                    x = torch.from_numpy(tile).unsqueeze(0).unsqueeze(0).float().to(device)
+                    recon = model(x)
+                    reconstructed = recon.squeeze().cpu().numpy()
+                    error_map = (tile - reconstructed) ** 2
+                    label = classify_tile(tile, error_map)
+                    color = CLASS_COLORS[label]
+
+                    ax.imshow(tile, cmap="gray", origin="lower", vmin=0, vmax=1)
+                    ax.set_title(f"#{i+1} {label}\nMSE: {errors[idx]:.5f}",
+                                 fontsize=6, pad=2, color=color, fontweight="bold")
+
+                    for spine in ax.spines.values():
+                        spine.set_edgecolor(color)
+                        spine.set_linewidth(2.5)
+                else:
+                    ax.axis("off")
+                    continue
+
+                ax.set_xticks([])
+                ax.set_yticks([])
+
+    # Legend
+    legend_elements = [Patch(facecolor=c, label=l) for l, c in CLASS_COLORS.items()]
+    fig.legend(handles=legend_elements, loc="lower center", ncol=4,
+               fontsize=9, frameon=True, bbox_to_anchor=(0.5, -0.02))
 
     plt.suptitle(
         f"Top {n} Anomalies Ranked by Reconstruction Error",
         fontsize=14, fontweight="bold", y=1.01
     )
-    fig.tight_layout()
+    fig.tight_layout(rect=[0, 0.03, 1, 0.97])
     fig.savefig(OUTPUT_PATH, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
