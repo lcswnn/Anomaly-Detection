@@ -1,0 +1,30 @@
+============================================================
+QUALITY CHECK REPORT
+============================================================
+
+1. ANOMALY SUB-CLASSIFICATION
+   Total anomalies: 2104
+   extended_source     :  1113 ( 52.9%)
+   unknown             :   937 ( 44.5%)
+   saturated_star      :    53 (  2.5%)
+   satellite_trail     :     1 (  0.0%)
+
+2. THRESHOLD ROBUSTNESS
+   Threshold: 0.001716
+   95% Bootstrap CI: [0.001692, 0.001740]
+   Coefficient of Variation: 0.0072 (0.72%)
+   Anomaly count range at CI bounds: 2015 — 2194
+   Per-chunk max deviation: 0.000199 (11.6%)
+
+   PASS: Threshold is stable across resamples.
+
+   PASS: Threshold is consistent across data chunks.
+
+3. FALSE NEGATIVE MINING
+   Candidates surfaced: 64
+   Interest score range: 1.944 — 2.180
+   These are tiles classified as NORMAL but with high structural complexity.
+   Manually inspect ../models/false_negatives.png for galaxy mergers,
+   lensing arcs, or other scientifically interesting objects.
+
+============================================================
