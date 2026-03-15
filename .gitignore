@@ -1,0 +1,12 @@
+# Compressed data files
+*.bz2
+
+# Raw data
+data/raw/
+
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
